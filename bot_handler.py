@@ -1,4 +1,5 @@
 import os
+import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, ConversationHandler, MessageHandler, filters
 from database import Database
@@ -275,8 +276,17 @@ class BotHandler:
 
         print("🤖 ربات یادآور بدهی شروع به کار کرد...")
         try:
-            await self.application.initialize()  # Properly initialize the application
-            await self.application.run_polling(close_loop=False)
+            try:
+                asyncio.get_running_loop()
+                # Loop is already running, use start_polling
+                await self.application.initialize()
+                await self.application.start_polling()
+                # Keep the bot running
+                while True:
+                    await asyncio.sleep(1)
+            except RuntimeError:
+                # No loop running, use run_polling
+                await self.application.run_polling(close_loop=False)
         except KeyboardInterrupt:
             print("\n🛑 ربات متوقف شد.")
         finally:
@@ -287,5 +297,5 @@ class BotHandler:
             if self.application:
                 try:
                     await self.application.shutdown()
-                except RuntimeError:
-                    pass  # Ignore if already shutting down
+                except Exception:
+                    pass  # Ignore shutdown errors
