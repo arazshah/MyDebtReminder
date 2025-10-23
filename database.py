@@ -4,7 +4,7 @@ from typing import List, Optional, Dict, Any
 import pytz
 
 class Database:
-    def __init__(self, db_path: str = 'debts.db'):
+    def __init__(self, db_path: str = 'data/debts.db'):
         self.db_path = db_path
         self.tehran_tz = pytz.timezone('Asia/Tehran')
         self.init_db()
