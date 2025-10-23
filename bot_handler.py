@@ -7,9 +7,13 @@ from debt_manager import DebtManager
 from reminder_service import ReminderService
 
 # Conversation states
-ADDING_DEBT = 1
-EDITING_DEBT = 2
-ADDING_REMINDER = 3
+ADDING_DEBT_CATEGORY = 1
+ADDING_DEBT_AMOUNT = 2
+ADDING_DEBT_DATE = 3
+ADDING_DEBT_DESCRIPTION = 4
+ADDING_DEBT_RECURRENCE = 5
+EDITING_DEBT = 6
+ADDING_REMINDER = 7
 
 class BotHandler:
     def __init__(self):
@@ -39,7 +43,12 @@ class BotHandler:
         help_text = (
             "📖 راهنمای استفاده از ربات یادآور بدهی:\n\n"
             "🔸 /add_debt - اضافه کردن بدهی جدید\n"
-            "   مراحل: دسته‌بندی، مبلغ، تاریخ سررسید، توضیحات، نوع تکرار\n\n"
+            "   ربات به صورت گام به گام از شما می‌پرسد:\n"
+            "   ۱. دسته‌بندی (اجاره، قسطی، برق، گاز، ...)\n"
+            "   ۲. مبلغ (به تومان)\n"
+            "   ۳. تاریخ سررسید (YYYY-MM-DD)\n"
+            "   ۴. توضیحات (اختیاری)\n"
+            "   ۵. نوع تکرار (یک بار، ماهانه، هفتگی، سالانه)\n\n"
             "🔸 /list_debts - نمایش تمام بدهی‌های فعال\n"
             "   مرتب شده بر اساس تاریخ سررسید\n\n"
             "🔸 /pay_debt <شناسه> - علامت‌گذاری بدهی به عنوان پرداخت شده\n"
@@ -48,61 +57,184 @@ class BotHandler:
             "   مثال: /delete_debt 1\n\n"
             "🔸 /add_reminder - اضافه کردن یادآور سفارشی\n"
             "   برای رویدادهای غیر بدهی\n\n"
+            "🔸 /cancel - لغو عملیات جاری\n\n"
             "📅 یادآورهای خودکار:\n"
             "• ۷ روز قبل از سررسید\n"
             "• ۳ روز قبل از سررسید\n"
             "• ۱ روز قبل از سررسید\n"
             "• در روز سررسید\n\n"
             "💡 نکات:\n"
-            "• تمام مبالغ به تومان وارد شوند\n"
-            "• تاریخ را به فرمت YYYY-MM-DD وارد کنید\n"
-            "• دسته‌بندی‌های پیشنهادی: اجاره، قسطی، برق/گاز، خرید\n"
+            "• فرآیند اضافه کردن بدهی کاملاً راهنما شده است\n"
+            "• می‌توانید در هر مرحله با /cancel عملیات را لغو کنید\n"
+            "• تاریخ را به فرمت YYYY-MM-DD وارد کنید (مثال: 2024-12-25)\n"
         )
         await update.message.reply_text(help_text)
 
     async def add_debt_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Start adding a debt"""
+        """Start adding a debt - ask for category"""
         await update.message.reply_text(
             "➕ اضافه کردن بدهی جدید\n\n"
-            "لطفاً اطلاعات را به فرمت زیر وارد کنید:\n"
-            "دسته‌بندی,مبلغ,تاریخ سررسید,توضیحات,تکرار\n\n"
-            "مثال:\n"
-            "اجاره,۲۰۰۰۰۰۰,۲۰۲۴-۱۲-۰۱,اجاره ماهانه آپارتمان,monthly\n\n"
-            "نکات:\n"
-            "• دسته‌بندی: اجاره، قسطی، برق، گاز، خرید، یا هر چیز دیگر\n"
-            "• مبلغ: به تومان (بدون کاما)\n"
-            "• تاریخ: YYYY-MM-DD\n"
-            "• تکرار: one-time (یک بار)، monthly (ماهانه)، weekly (هفتگی)، yearly (سالانه)\n"
-            "• توضیحات اختیاری است"
+            "مرحله ۱ از ۵: دسته‌بندی\n\n"
+            "لطفاً دسته‌بندی بدهی را وارد کنید:\n\n"
+            "پیشنهادات:\n"
+            "• اجاره\n"
+            "• قسطی\n"
+            "• برق\n"
+            "• گاز\n"
+            "• آب\n"
+            "• خرید\n"
+            "• وام\n"
+            "• یا هر دسته‌بندی دیگری که می‌خواهید\n\n"
+            "برای لغو عملیات از /cancel استفاده کنید."
         )
-        return ADDING_DEBT
+        return ADDING_DEBT_CATEGORY
 
-    async def add_debt_process(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Process debt addition"""
-        user_id = update.effective_user.id
+    async def add_debt_category(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Process category and ask for amount"""
+        category = update.message.text.strip()
+        
+        if not category:
+            await update.message.reply_text("❌ دسته‌بندی نمی‌تواند خالی باشد. لطفاً دوباره وارد کنید:")
+            return ADDING_DEBT_CATEGORY
+        
+        context.user_data['debt_category'] = category
+        
+        await update.message.reply_text(
+            f"✅ دسته‌بندی: {category}\n\n"
+            "مرحله ۲ از ۵: مبلغ\n\n"
+            "لطفاً مبلغ بدهی را به تومان وارد کنید:\n\n"
+            "مثال: 2000000\n"
+            "(فقط عدد، بدون کاما یا نقطه)"
+        )
+        return ADDING_DEBT_AMOUNT
+
+    async def add_debt_amount(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Process amount and ask for due date"""
         text = update.message.text.strip()
-
+        
         try:
-            # Parse the input
-            parts = [part.strip() for part in text.split(',')]
-            if len(parts) < 3:
-                await update.message.reply_text("❌ فرمت ورودی نامعتبر. لطفاً از فرمت صحیح استفاده کنید.")
-                return ADDING_DEBT
-
-            category = parts[0]
-            amount = int(parts[1])
-            due_date = parts[2]
-            description = parts[3] if len(parts) > 3 else ""
-            recurrence = parts[4] if len(parts) > 4 else "one-time"
-
-            result = self.debt_manager.add_debt(user_id, category, amount, due_date, description, recurrence)
-            await update.message.reply_text(result)
-
+            amount = int(text.replace(',', '').replace('،', ''))
+            if amount <= 0:
+                await update.message.reply_text("❌ مبلغ باید بیشتر از صفر باشد. لطفاً دوباره وارد کنید:")
+                return ADDING_DEBT_AMOUNT
+            
+            context.user_data['debt_amount'] = amount
+            
+            await update.message.reply_text(
+                f"✅ مبلغ: {amount:,} تومان\n\n"
+                "مرحله ۳ از ۵: تاریخ سررسید\n\n"
+                "لطفاً تاریخ سررسید را وارد کنید:\n\n"
+                "فرمت: YYYY-MM-DD\n"
+                "مثال: 2024-12-25\n\n"
+                "نکته: سال-ماه-روز"
+            )
+            return ADDING_DEBT_DATE
+            
         except ValueError:
-            await update.message.reply_text("❌ مبلغ باید عدد باشد.")
-        except Exception as e:
-            await update.message.reply_text(f"❌ خطا: {str(e)}")
+            await update.message.reply_text("❌ مبلغ باید عدد باشد. لطفاً دوباره وارد کنید:")
+            return ADDING_DEBT_AMOUNT
 
+    async def add_debt_date(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Process due date and ask for description"""
+        due_date = update.message.text.strip()
+        
+        try:
+            from datetime import datetime
+            datetime.fromisoformat(due_date)
+            
+            context.user_data['debt_due_date'] = due_date
+            
+            await update.message.reply_text(
+                f"✅ تاریخ سررسید: {due_date}\n\n"
+                "مرحله ۴ از ۵: توضیحات\n\n"
+                "لطفاً توضیحات بدهی را وارد کنید:\n\n"
+                "مثال: اجاره ماهانه آپارتمان\n\n"
+                "اگر نمی‌خواهید توضیحات اضافه کنید، عبارت 'ندارد' یا '-' را وارد کنید."
+            )
+            return ADDING_DEBT_DESCRIPTION
+            
+        except ValueError:
+            await update.message.reply_text(
+                "❌ فرمت تاریخ نامعتبر است.\n"
+                "لطفاً به فرمت YYYY-MM-DD وارد کنید (مثال: 2024-12-25):"
+            )
+            return ADDING_DEBT_DATE
+
+    async def add_debt_description(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Process description and ask for recurrence"""
+        description = update.message.text.strip()
+        
+        if description in ['ندارد', '-', 'نداره', 'no', 'none']:
+            description = ""
+        
+        context.user_data['debt_description'] = description
+        
+        # Create inline keyboard for recurrence options
+        keyboard = [
+            [
+                InlineKeyboardButton("یک بار (one-time)", callback_data="recur_one-time"),
+                InlineKeyboardButton("ماهانه (monthly)", callback_data="recur_monthly")
+            ],
+            [
+                InlineKeyboardButton("هفتگی (weekly)", callback_data="recur_weekly"),
+                InlineKeyboardButton("سالانه (yearly)", callback_data="recur_yearly")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        desc_text = description if description else "(بدون توضیحات)"
+        await update.message.reply_text(
+            f"✅ توضیحات: {desc_text}\n\n"
+            "مرحله ۵ از ۵: نوع تکرار\n\n"
+            "لطفاً نوع تکرار بدهی را انتخاب کنید:",
+            reply_markup=reply_markup
+        )
+        return ADDING_DEBT_RECURRENCE
+
+    async def add_debt_recurrence(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Process recurrence and save the debt"""
+        query = update.callback_query
+        await query.answer()
+        
+        recurrence = query.data.replace("recur_", "")
+        user_id = query.from_user.id
+        
+        # Get all stored data
+        category = context.user_data.get('debt_category')
+        amount = context.user_data.get('debt_amount')
+        due_date = context.user_data.get('debt_due_date')
+        description = context.user_data.get('debt_description', '')
+        
+        try:
+            result = self.debt_manager.add_debt(user_id, category, amount, due_date, description, recurrence)
+            
+            # Clear user data
+            context.user_data.clear()
+            
+            # Map recurrence to Persian
+            recurrence_map = {
+                'one-time': 'یک بار',
+                'monthly': 'ماهانه',
+                'weekly': 'هفتگی',
+                'yearly': 'سالانه'
+            }
+            
+            summary = (
+                f"✅ بدهی با موفقیت اضافه شد!\n\n"
+                f"📋 خلاصه:\n"
+                f"• دسته‌بندی: {category}\n"
+                f"• مبلغ: {amount:,} تومان\n"
+                f"• تاریخ سررسید: {due_date}\n"
+                f"• توضیحات: {description if description else '(ندارد)'}\n"
+                f"• تکرار: {recurrence_map.get(recurrence, recurrence)}\n\n"
+                f"{result}"
+            )
+            
+            await query.edit_message_text(summary)
+            
+        except Exception as e:
+            await query.edit_message_text(f"❌ خطا در ذخیره بدهی: {str(e)}")
+        
         return ConversationHandler.END
 
     async def list_debts(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -245,7 +377,11 @@ class BotHandler:
         add_debt_conv = ConversationHandler(
             entry_points=[CommandHandler("add_debt", self.add_debt_start)],
             states={
-                ADDING_DEBT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.add_debt_process)],
+                ADDING_DEBT_CATEGORY: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.add_debt_category)],
+                ADDING_DEBT_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.add_debt_amount)],
+                ADDING_DEBT_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.add_debt_date)],
+                ADDING_DEBT_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.add_debt_description)],
+                ADDING_DEBT_RECURRENCE: [CallbackQueryHandler(self.add_debt_recurrence, pattern="^recur_")],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
         )

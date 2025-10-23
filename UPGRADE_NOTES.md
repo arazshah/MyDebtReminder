@@ -1,97 +1,107 @@
-# Upgrade Notes - Debt Reminder Bot
+# Upgrade Notes - MyDebtReminder Bot
 
-## Changes Made
+## Version 2.0 - Step-by-Step Debt Addition (October 23, 2025)
 
-### 1. Fixed Async/Await Issues
-- **bot_handler.py**: Changed `run_bot()` method to async
-- Properly implemented async bot initialization and shutdown
-- Fixed event loop handling for continuous operation
+### Major Changes
 
-### 2. Database Improvements
-- **database.py**: Added automatic directory creation for database
-- Ensures `data/` directory exists before database initialization
-- Prevents file not found errors on first run
+#### Enhanced Add Debt Flow
+The `/add_debt` command has been completely redesigned to provide a more user-friendly, step-by-step experience.
 
-### 3. Dependencies Update
-- **requirements.txt**: Removed unused `APScheduler` dependency
-- Kept only necessary packages:
-  - `python-telegram-bot==20.7`
-  - `pytz==2023.3`
+**Previous Behavior:**
+- Users had to input all debt information in a single message with comma-separated values
+- Format: `category,amount,due_date,description,recurrence`
+- Example: `اجاره,2000000,2024-12-01,اجاره ماهانه آپارتمان,monthly`
+- Error-prone and confusing for users
 
-### 4. Project Structure Enhancements
-- Created `.gitignore` to exclude unnecessary files
-- Created `run.sh` script for easy bot execution
-- Added virtual environment support
+**New Behavior:**
+- Interactive 5-step conversation flow
+- Bot asks for each field separately:
+  1. **Category** - Suggests common categories (rent, installment, utilities, etc.)
+  2. **Amount** - Validates numeric input, accepts Persian/English numbers
+  3. **Due Date** - Validates date format (YYYY-MM-DD)
+  4. **Description** - Optional field, accepts "ندارد" or "-" to skip
+  5. **Recurrence** - Interactive buttons for selection (one-time, monthly, weekly, yearly)
 
-### 5. Files Added
-- `.gitignore` - Git ignore rules
-- `run.sh` - Automated run script
-- `UPGRADE_NOTES.md` - This file
+**Benefits:**
+- ✅ More intuitive and user-friendly
+- ✅ Better input validation at each step
+- ✅ Clear progress indication (Step X of 5)
+- ✅ Helpful examples and suggestions
+- ✅ Can cancel at any time with `/cancel`
+- ✅ Summary of entered data before final submission
+- ✅ Supports both Persian and English number formats
 
-## How to Run
+### Technical Implementation
 
-### Method 1: Using the run script (Recommended)
-```bash
-./run.sh
+#### New Conversation States
+```python
+ADDING_DEBT_CATEGORY = 1
+ADDING_DEBT_AMOUNT = 2
+ADDING_DEBT_DATE = 3
+ADDING_DEBT_DESCRIPTION = 4
+ADDING_DEBT_RECURRENCE = 5
 ```
 
-### Method 2: Manual execution
-```bash
-# Activate virtual environment
-source venv/bin/activate
+#### New Handler Functions
+- `add_debt_start()` - Initiates the conversation, asks for category
+- `add_debt_category()` - Processes category, asks for amount
+- `add_debt_amount()` - Validates and processes amount, asks for date
+- `add_debt_date()` - Validates date format, asks for description
+- `add_debt_description()` - Processes description, shows recurrence buttons
+- `add_debt_recurrence()` - Processes selection and saves the debt
 
-# Run the bot
-python main.py
-```
+#### Data Storage
+User input is temporarily stored in `context.user_data` during the conversation:
+- `debt_category`
+- `debt_amount`
+- `debt_due_date`
+- `debt_description`
 
-### Method 3: Using Docker
-```bash
-# Build and run with docker-compose
-docker-compose up -d --build
+Data is cleared after successful debt creation or cancellation.
 
-# View logs
-docker-compose logs -f
+### User Experience Improvements
 
-# Stop the bot
-docker-compose down
-```
+1. **Input Validation**
+   - Empty category check
+   - Numeric validation for amount (with comma/Persian comma support)
+   - Positive amount validation
+   - ISO date format validation
+   - Helpful error messages with retry prompts
 
-## Testing Checklist
+2. **Visual Feedback**
+   - ✅ Checkmarks for completed steps
+   - Progress indicators (Step X of 5)
+   - Summary display before final submission
+   - Persian translations for recurrence types
 
-- [x] Fixed async/await compatibility
-- [x] Database auto-initialization
-- [x] Virtual environment setup
-- [x] Dependencies installation
-- [x] Run script creation
-- [ ] Bot startup test
-- [ ] Command functionality test
+3. **Flexibility**
+   - Optional description field
+   - Multiple ways to skip description ("ندارد", "-", "نداره", "no", "none")
+   - Cancel option at any step
 
-## Next Steps
+### Updated Help Text
+The `/help` command now reflects the new step-by-step process with clear instructions for each stage.
 
-1. Test the bot by running: `./run.sh`
-2. Send `/start` command to the bot
-3. Test adding a debt with `/add_debt`
-4. Test listing debts with `/list_debts`
-5. Verify reminder service is working
+### Backward Compatibility
+⚠️ **Breaking Change**: The old comma-separated input format is no longer supported. Users must use the new interactive flow.
 
-## Known Issues Fixed
+### Migration Notes
+No database migration required. This is purely a UI/UX change in how data is collected from users.
 
-1. ✅ `run_bot()` was not async - FIXED
-2. ✅ Database directory not created automatically - FIXED
-3. ✅ APScheduler listed but not used - FIXED
-4. ✅ No virtual environment setup - FIXED
+### Testing Recommendations
+1. Test the complete flow from start to finish
+2. Test cancellation at each step
+3. Test invalid inputs (empty category, non-numeric amount, invalid date)
+4. Test Persian and English number inputs
+5. Test description skip options
+6. Test all recurrence type buttons
+7. Verify data is properly saved to database
+8. Verify user_data is cleared after completion/cancellation
 
-## Environment Variables
-
-Make sure your `.env` file contains:
-```
-TELEGRAM_BOT_TOKEN=your_bot_token_here
-```
-
-## Support
-
-If you encounter any issues:
-1. Check that `.env` file has the correct token
-2. Ensure virtual environment is activated
-3. Verify all dependencies are installed
-4. Check the logs for error messages
+### Future Enhancements
+Potential improvements for future versions:
+- Add edit functionality for existing debts
+- Support for Persian calendar (Jalali) dates
+- Bulk debt import
+- Debt templates for recurring expenses
+- Category management (add/edit custom categories)
