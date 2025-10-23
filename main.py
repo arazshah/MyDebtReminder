@@ -26,14 +26,8 @@ async def main():
     try:
         # Run the bot
         await bot_handler.run_bot(token)
-    except KeyboardInterrupt:
-        print("\n🛑 ربات متوقف شد.")
     except Exception as e:
         print(f"❌ خطا در اجرای ربات: {e}")
-    finally:
-        # Stop reminder service if it exists
-        if bot_handler.reminder_service:
-            await bot_handler.reminder_service.stop_scheduler()
 
 if __name__ == '__main__':
     asyncio.run(main())

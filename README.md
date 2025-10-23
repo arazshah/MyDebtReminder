@@ -98,7 +98,53 @@ MyDebtReminder/
 
 ## استقرار
 
-### روی سرور محلی
+### با Docker (توصیه شده)
+
+#### پیش‌نیازها
+
+- Docker و Docker Compose نصب شده باشند
+
+#### مراحل استقرار
+
+1. کلون کردن پروژه:
+```bash
+git clone <repository-url>
+cd MyDebtReminder
+```
+
+2. کپی کردن فایل نمونه متغیرهای محیطی:
+```bash
+cp .env.example .env
+```
+
+3. ویرایش فایل `.env` و قرار دادن توکن ربات:
+```bash
+nano .env
+# یا هر ویرایشگر دیگر
+```
+
+4. ساخت و اجرای کانتینر:
+```bash
+docker-compose up -d --build
+```
+
+5. مشاهده لاگ‌ها:
+```bash
+docker-compose logs -f
+```
+
+6. توقف ربات:
+```bash
+docker-compose down
+```
+
+#### مدیریت داده‌ها
+
+داده‌های ربات (پایگاه داده SQLite) در دایرکتوری `data/` ذخیره می‌شوند که به عنوان volume در Docker mount شده است.
+
+### روش‌های دیگر استقرار
+
+#### روی سرور محلی
 
 ```bash
 # اجرای مداوم با nohup
@@ -108,13 +154,13 @@ nohup python main.py &
 screen -S debt-bot python main.py
 ```
 
-### روی Heroku
+#### روی Heroku
 
 1. ایجاد اپ Heroku
 2. تنظیم متغیر محیطی `TELEGRAM_BOT_TOKEN`
 3. استقرار کد
 
-### روی VPS
+#### روی VPS
 
 ```bash
 # نصب supervisor برای مدیریت فرآیند

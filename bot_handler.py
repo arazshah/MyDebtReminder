@@ -271,7 +271,17 @@ class BotHandler:
         self.setup_handlers()
 
         # Start reminder service
-        await self.reminder_service.start_scheduler()
+        self.reminder_service.start_scheduler()
 
         print("🤖 ربات یادآور بدهی شروع به کار کرد...")
-        await self.application.run_polling()
+        try:
+            await self.application.run_polling(close_loop=False)
+        except KeyboardInterrupt:
+            print("\n🛑 ربات متوقف شد.")
+        finally:
+            # Stop reminder service
+            if self.reminder_service:
+                self.reminder_service.stop_scheduler()
+            # Properly shutdown the application
+            if self.application:
+                await self.application.shutdown()

@@ -1,5 +1,4 @@
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
+import asyncio
 from datetime import datetime, timedelta
 import pytz
 from typing import Dict, Any, List
@@ -11,23 +10,38 @@ class ReminderService:
         self.bot = bot
         self.db = db
         self.debt_manager = debt_manager
-        self.scheduler = AsyncIOScheduler(timezone=pytz.timezone('Asia/Tehran'))
         self.tehran_tz = pytz.timezone('Asia/Tehran')
+        self._reminder_task = None
+        self._running = False
 
-    async def start_scheduler(self):
+    def start_scheduler(self):
         """Start the reminder scheduler"""
-        self.scheduler.start()
-        await self.schedule_daily_reminders()
+        if not self._running:
+            self._running = True
+            self._reminder_task = asyncio.create_task(self._reminder_loop())
 
-    async def schedule_daily_reminders(self):
-        """Schedule daily reminder checks"""
-        # Run reminder check every day at 9 AM Tehran time
-        self.scheduler.add_job(
-            self.send_daily_reminders,
-            trigger=CronTrigger(hour=9, minute=0, timezone=self.tehran_tz),
-            id='daily_reminders',
-            replace_existing=True
-        )
+    async def _reminder_loop(self):
+        """Main reminder loop that runs continuously"""
+        while self._running:
+            try:
+                # Check if it's 9 AM Tehran time
+                now = datetime.now(self.tehran_tz)
+                if now.hour == 9 and now.minute == 0:
+                    await self.send_daily_reminders()
+                    # Wait a bit to avoid sending multiple times in the same minute
+                    await asyncio.sleep(60)
+
+                # Check for custom reminders every hour
+                await self.send_custom_reminders()
+
+                # Sleep for 1 hour before next check
+                await asyncio.sleep(3600)  # 1 hour
+
+            except Exception as e:
+                print(f"Error in reminder loop: {e}")
+                await asyncio.sleep(60)  # Wait 1 minute before retrying
+
+
 
     async def send_daily_reminders(self):
         """Send reminders for upcoming debts"""
@@ -102,7 +116,8 @@ class ReminderService:
         except Exception as e:
             print(f"Error sending custom reminders: {e}")
 
-    async def stop_scheduler(self):
+    def stop_scheduler(self):
         """Stop the scheduler"""
-        if self.scheduler.running:
-            self.scheduler.shutdown()
+        self._running = False
+        if self._reminder_task and not self._reminder_task.done():
+            self._reminder_task.cancel()
