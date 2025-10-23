@@ -285,4 +285,7 @@ class BotHandler:
                 self.reminder_service.stop_scheduler()
             # Properly shutdown the application
             if self.application:
-                await self.application.shutdown()
+                try:
+                    await self.application.shutdown()
+                except RuntimeError:
+                    pass  # Ignore if already shutting down
