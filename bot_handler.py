@@ -264,7 +264,7 @@ class BotHandler:
         # Callback query handler for inline buttons
         self.application.add_handler(CallbackQueryHandler(self.button_callback))
 
-    async def run_bot(self, token: str):
+    def run_bot(self, token: str):
         """Run the bot"""
         self.application = Application.builder().token(token).build()
         self.reminder_service = ReminderService(self.application.bot, self.db, self.debt_manager)
@@ -276,17 +276,7 @@ class BotHandler:
 
         print("🤖 ربات یادآور بدهی شروع به کار کرد...")
         try:
-            try:
-                asyncio.get_running_loop()
-                # Loop is already running, use start_polling
-                await self.application.initialize()
-                await self.application.start_polling()
-                # Keep the bot running
-                while True:
-                    await asyncio.sleep(1)
-            except RuntimeError:
-                # No loop running, use run_polling
-                await self.application.run_polling(close_loop=False)
+            self.application.run_polling()
         except KeyboardInterrupt:
             print("\n🛑 ربات متوقف شد.")
         finally:
@@ -295,7 +285,4 @@ class BotHandler:
                 self.reminder_service.stop_scheduler()
             # Properly shutdown the application
             if self.application:
-                try:
-                    await self.application.shutdown()
-                except Exception:
-                    pass  # Ignore shutdown errors
+                self.application.shutdown()
