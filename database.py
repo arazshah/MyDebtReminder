@@ -1,4 +1,5 @@
 import sqlite3
+import os
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 import pytz
@@ -7,6 +8,8 @@ class Database:
     def __init__(self, db_path: str = 'data/debts.db'):
         self.db_path = db_path
         self.tehran_tz = pytz.timezone('Asia/Tehran')
+        # Ensure data directory exists
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
         self.init_db()
 
     def init_db(self):
