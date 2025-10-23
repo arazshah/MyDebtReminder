@@ -21,7 +21,7 @@ COPY . .
 RUN mkdir -p /app/data
 
 # Set environment variable for token (will be overridden at runtime)
-ENV TELEGRAM_BOT_TOKEN="8218518345:AAHsdvHXHL7x86pXJh3tpYiTGu0M1t0sZeo"
+ENV TELEGRAM_BOT_TOKEN=""
 
 # Run the bot
 CMD ["python", "main.py"]
