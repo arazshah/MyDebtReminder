@@ -30,4 +30,12 @@ async def main():
         print(f"❌ خطا در اجرای ربات: {e}")
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except RuntimeError as e:
+        if "already running" in str(e):
+            # Event loop is already running (e.g., in Jupyter or some environments)
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(main())
+        else:
+            raise

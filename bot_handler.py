@@ -275,6 +275,7 @@ class BotHandler:
 
         print("🤖 ربات یادآور بدهی شروع به کار کرد...")
         try:
+            await self.application.initialize()  # Properly initialize the application
             await self.application.run_polling(close_loop=False)
         except KeyboardInterrupt:
             print("\n🛑 ربات متوقف شد.")
