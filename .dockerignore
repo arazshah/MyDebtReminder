@@ -44,6 +44,5 @@ data/
 README.md
 
 # Docker
-Dockerfile
 docker-compose.yml
 .dockerignore
